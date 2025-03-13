@@ -10,7 +10,7 @@ class Card(BaseModel):
     s_year: int = 0
     s_month: int = 1
     s_day: int = 1
-    e_year: str = "0"
+    e_year: int = 0
     e_month: int = 1
     e_day: int = 1
     title: str = ""

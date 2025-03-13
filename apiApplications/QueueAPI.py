@@ -59,17 +59,22 @@ class QueueAPI:
 
     def work(self):
         while True:
+            print("IS ENOUGH?")
             if self.queueService.checkIfEnough():
+                print("YESS")
                 gameAddress = requests.get(f"{self.gameManagerAddr}/getServer").json()["message"]
+                print("GAME ADDRESS IS", gameAddress)
                 if gameAddress == "None":
+                    print("NONE AVAILABLE")
                     continue
                 print("GET SERVER IS ", gameAddress)
-                requests.post(f"{self.gameManagerAddr}/resetServer", json={"address": gameAddress})
-                print("RESETTED")
                 self.queueService.setGameAddress(gameAddress)
+            else:
+                print("NAY")
+
 
             print(f"WAITING... {len(self.queueService.queue)} PLAYERS IN QUEUE")
-            sleep(10)
+            sleep(5)
 
 
 if __name__ == "__main__":

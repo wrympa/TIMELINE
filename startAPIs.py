@@ -79,4 +79,4 @@ if __name__ == "__main__":
     subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)
     subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)
     subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)
-    subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)
+    # subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)

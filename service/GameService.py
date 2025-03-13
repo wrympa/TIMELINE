@@ -26,8 +26,8 @@ class GameService:
         rCard = None
         if index - 1 >= 0:
             lCard = self.deck[index - 1]
-        if index + 1 <= len(self.deck) - 1:
-            rCard = self.deck[index + 1]
+        if index <= len(self.deck) - 1:
+            rCard = self.deck[index]
 
         if lCard is None and rCard is None:
             self.deck.insert(index, card)
@@ -52,7 +52,7 @@ class GameService:
             if new_index >= len(self.deck):
                 break
             curr_card = self.deck[new_index]
-        self.deck.insert(index, card)
+        self.deck.insert(new_index, card)
         return -100
 
     def playPeriodCard(self, card: Card, indexes: List[int]):

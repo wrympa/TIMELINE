@@ -41,8 +41,7 @@ class QueueService:
 
     def setGameAddress(self, gameAddress: str) -> bool:
         trueGameAddress = gameAddress
-        first, second, third, fourth = self.queue[:4]
-        self.queue = self.queue[4:]
+        first, second, third, fourth = self.queue.pop(), self.queue.pop(), self.queue.pop(), self.queue.pop()
 
         with self.readiesLock:
             self.readies[first.UUID] = trueGameAddress

@@ -16,7 +16,8 @@ class GameManagerService:
         self.serversList: dict[str, bool] = {}
 
     def addNewServer(self, address: str):
-        self.serversList[address] = True
+        with self.serverListLock:
+            self.serversList[address] = True
 
     def isAnyServerFree(self) -> str:
         with self.serverListLock:
@@ -27,4 +28,7 @@ class GameManagerService:
         return "None"
 
     def resetServer(self, address: str):
-        requests.post(f"{address}/resetServer")
+        with self.serverListLock:
+            print(address, self.serversList.keys())
+            self.serversList[address] = True
+

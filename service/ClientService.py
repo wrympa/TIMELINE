@@ -2,6 +2,8 @@ import random
 import string
 import uuid
 import asyncio
+from asyncio import sleep
+
 import websockets
 import requests
 import json
@@ -13,7 +15,11 @@ from models.PlayerMove import PlayerMove
 
 
 class ClientService:
-    def __init__(self):
+    def __init__(self, visual: bool):
+        self.currMovePlaces = None
+        self.currMoveIndex = None
+        self.gameStateDict = None
+        self.queueWaitingStatus: str = ""
         self.pileSize: int = 0
         self.gamePoints: dict[str, int] = {}
         self.gameOver: bool = False
@@ -25,13 +31,16 @@ class ClientService:
         self.loggedOn = False
         self.addressAddr = "http://127.0.0.1:9090"
         self.websocket = None
+        self.gameAddrs = ""
 
         # Get service addresses
         self.get_service_addresses()
         atexit.register(self.cleanup)
 
         # Use asyncio to run the main client loop
-        asyncio.run(self.start_client())
+        self.visual = visual
+        if not self.visual:
+            asyncio.run(self.start_client())
 
     def get_service_addresses(self):
         auth_response = requests.get(f"{self.addressAddr}/authAddress")
@@ -42,7 +51,7 @@ class ClientService:
         self.queAddrs = f"{queue_response.json()['message']}"
         print(f"Queue address: {self.queAddrs}")
 
-        self.gameAddrs = None
+        self.gameAddrs = ""
 
     async def start_client(self):
         print(f"""
@@ -76,22 +85,23 @@ class ClientService:
         }
         result = requests.post(f"{self.queAddrs}/enqueue", json=enqueue_data).json()["message"]
         if result == "ENQUEUED":
-            await self.awaitResponse()
+            await self.awaitQueueResponse()
         else:
             print("SOMETHING WRONG WITH SERVER OR UR BANNED")
 
-    async def awaitResponse(self):
+    async def awaitQueueResponse(self):
         while True:
             await asyncio.sleep(5)
-            print("USER IS WAITING")
+            self.queueWaitingStatus = "USER IS WAITING"
             enqueue_data = {"UUID": self.currentGameUUID}
             result = requests.get(f"{self.queAddrs}/pollForSelf", json=enqueue_data).json()["message"]
             if result != "Waiting":
                 self.gameAddrs = result
                 break
 
-        print("MATCH FOUND, STARTING GAME")
+        self.queueWaitingStatus = "MATCH FOUND, STARTING GAME"
         await self.connect_to_websocket()
+        self.queueWaitingStatus = ""
 
     async def connect_to_websocket(self):
         parsed_url = urlparse(self.gameAddrs)
@@ -124,6 +134,8 @@ class ClientService:
         self.deck: List[int] = []
         self.myTurn = False
         self.websocket = None
+        self.gameAddrs = ""
+        self.gameStateDict = None
 
     async def manage_game_tasks(self, websocket):
         receive_task = asyncio.create_task(self.receive_messages(websocket))
@@ -136,7 +148,8 @@ class ClientService:
         finally:
             receive_task.cancel()
             send_task.cancel()
-            await asyncio.gather(receive_task, send_task, return_exceptions=True)
+            print("CLEANUP")
+            await self.postGameCleanUp()
 
     async def receive_messages(self, websocket):
         try:
@@ -153,26 +166,47 @@ class ClientService:
     async def send_messages(self, websocket):
         try:
             while not self.gameOver:
-                if self.myTurn:
-                    move = input(
-                        "Your move: format is [CARD_INDEX] [PLACE 1] [PLACE 2 (if its period card)]:")
-                    parts = move.split(' ')
-                    cardIndex = int(parts[0])
-                    cardPlace = [int(parts[1])] if len(parts) == 2 else [int(parts[1]), int(parts[2])]
-
-                    playerMove = PlayerMove(cardIndex=cardIndex, cardPlaces=cardPlace)
-                    playerMoveDict = playerMove.model_dump()
-                    await websocket.send(json.dumps(playerMoveDict))
-                    self.myTurn = False
+                if not self.visual:
+                    if self.myTurn:
+                        move = input(
+                            "Your move: format is [CARD_INDEX] [PLACE 1] [PLACE 2 (if its period card)]:")
+                        parts = move.split(' ')
+                        cardIndex = int(parts[0])
+                        cardPlace = [int(parts[1])] if len(parts) == 2 else [int(parts[1]), int(parts[2])]
+                        playerMove = PlayerMove(cardIndex=cardIndex, cardPlaces=cardPlace)
+                        playerMoveDict = playerMove.model_dump()
+                        await self.websocket.send(json.dumps(playerMoveDict))
+                        self.myTurn = False
+                    else:
+                        await asyncio.sleep(1)
                 else:
-                    await asyncio.sleep(1)
+                    print("CHECK IF NONE", self.currMoveIndex, self.currMovePlaces)
+                    if self.currMoveIndex is not None and self.currMovePlaces is not None:
+                        playerMove = PlayerMove(cardIndex=self.currMoveIndex, cardPlaces=self.currMovePlaces)
+                        playerMoveDict = playerMove.model_dump()
+                        print("SENDING")
+                        await self.websocket.send(json.dumps(playerMoveDict))
+                        print("SENT")
+                        self.myTurn = False
+                        self.currMovePlaces = None
+                        self.currMoveIndex = None
+                    else:
+                        print("IT WAS NONE")
+                        await asyncio.sleep(1)
         except websockets.exceptions.ConnectionClosed:
             print("WebSocket connection closed during send.")
         finally:
             print("Send messages task ended.")
 
+    def recieveMoveFromVisuals(self, cardIndex: int, cardPlaces: List[int]):
+        print("AAAAA")
+        self.currMoveIndex = cardIndex
+        self.currMovePlaces = cardPlaces
+        print("SETTO", self.currMoveIndex, self.currMovePlaces)
+
     def process_update(self, message):
         message = json.loads(message)
+        self.gameStateDict = message
         self.hand = message["hands"][self.currName]
         self.deck = message["deck"]
         self.gameOver = message["over"]
@@ -190,10 +224,10 @@ class ClientService:
         print(self.pileSize, "CARDS LEFT IN PILE")
         print("/////////////////////////")
 
-    def attemptAuth(self, parts):
+    def attemptAuth(self, parts) -> bool:
         if len(parts) != 3:
             print("Invalid format. Use: LOG [USERNAME] [PASSWORD]")
-            return
+            return False
 
         usr, pasw = parts[1], parts[2]
         register_data = {
@@ -207,15 +241,18 @@ class ClientService:
                 self.currName = usr
                 self.loggedOn = True
                 print(result, " HELLO, ", self.currName)
+                return True
             else:
                 print("wrong credentials. sry :(((")
+                return False
         except requests.exceptions.RequestException as e:
             print(f"Login failed: {str(e)}")
+            return False
 
-    def attemptRegister(self, parts):
+    def attemptRegister(self, parts) -> bool:
         if len(parts) != 3:
             print("Invalid format. Use: REG [USERNAME] [PASSWORD]")
-            return
+            return False
 
         usr, pasw = parts[1], parts[2]
         register_data = {
@@ -225,12 +262,18 @@ class ClientService:
         try:
             result = requests.post(f"{self.authAddrs}/tryRegister", json=register_data)
             print("Registration result:", result.json())
+            if result.json()["message"] == "SUCCESSFULLY REGISTERED":
+                return True
         except requests.exceptions.RequestException as e:
             print(f"Registration failed: {str(e)}")
+        return False
 
     def cleanup(self):
         print("Cleaning up...")
 
+    def get_game_state(self):
+        return self.gameStateDict
+
 
 if __name__ == "__main__":
-    client = ClientService()
+    client = ClientService(False)
