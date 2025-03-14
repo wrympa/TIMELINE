@@ -3,6 +3,7 @@ import string
 import uuid
 import asyncio
 from asyncio import sleep
+from datetime import datetime
 
 import websockets
 import requests
@@ -11,6 +12,7 @@ import atexit
 from typing import List
 from urllib.parse import urlparse
 
+from models.Ping import Ping
 from models.PlayerMove import PlayerMove
 
 
@@ -112,8 +114,7 @@ class ClientService:
             async with websockets.connect(uri) as websocket:
                 print("Connected to game server!")
                 self.websocket = websocket
-
-                # Use a single task manager to handle receive and send
+                self.websocket.close_timeout = 500
                 await self.manage_game_tasks(websocket)
 
         except websockets.exceptions.WebSocketException as e:
@@ -138,11 +139,12 @@ class ClientService:
         self.gameStateDict = None
 
     async def manage_game_tasks(self, websocket):
-        receive_task = asyncio.create_task(self.receive_messages(websocket))
-        send_task = asyncio.create_task(self.send_messages(websocket))
+        receive_task = asyncio.create_task(self.receive_messages())
+        send_task = asyncio.create_task(self.send_messages())
+        keepAlive_task = asyncio.create_task(self.keepPinging())
 
         try:
-            await asyncio.gather(receive_task, send_task)
+            await asyncio.gather(receive_task, send_task, keepAlive_task)
         except asyncio.CancelledError:
             print("Game tasks were cancelled.")
         finally:
@@ -151,10 +153,15 @@ class ClientService:
             print("CLEANUP")
             await self.postGameCleanUp()
 
-    async def receive_messages(self, websocket):
+    async def get_user_input(self):
+        return await asyncio.to_thread(input,
+                                       "Your move: format is [CARD_INDEX] [PLACE 1] [PLACE 2 (if its period card)]:")
+
+
+    async def receive_messages(self):
         try:
             while not self.gameOver:
-                message = await websocket.recv()
+                message = await self.websocket.recv()
                 self.process_update(message)
                 self.print_game_update()
                 await asyncio.sleep(1)
@@ -163,13 +170,20 @@ class ClientService:
         finally:
             print("Receive messages task ended.")
 
-    async def send_messages(self, websocket):
+    async def keepPinging(self):
+        while not self.gameOver:
+            pingInfo = Ping(sendJi=str(datetime.utcnow().timestamp()))
+            pingInfo = pingInfo.model_dump()
+            await self.websocket.send(json.dumps(pingInfo))
+            await asyncio.sleep(10)
+
+    async def send_messages(self):
         try:
             while not self.gameOver:
                 if not self.visual:
+                    print("IS MY TURN", self.myTurn)
                     if self.myTurn:
-                        move = input(
-                            "Your move: format is [CARD_INDEX] [PLACE 1] [PLACE 2 (if its period card)]:")
+                        move = await self.get_user_input()
                         parts = move.split(' ')
                         cardIndex = int(parts[0])
                         cardPlace = [int(parts[1])] if len(parts) == 2 else [int(parts[1]), int(parts[2])]
@@ -178,7 +192,7 @@ class ClientService:
                         await self.websocket.send(json.dumps(playerMoveDict))
                         self.myTurn = False
                     else:
-                        await asyncio.sleep(1)
+                        await asyncio.sleep(5)
                 else:
                     print("CHECK IF NONE", self.currMoveIndex, self.currMovePlaces)
                     if self.currMoveIndex is not None and self.currMovePlaces is not None:
@@ -191,8 +205,7 @@ class ClientService:
                         self.currMovePlaces = None
                         self.currMoveIndex = None
                     else:
-                        print("IT WAS NONE")
-                        await asyncio.sleep(1)
+                        await asyncio.sleep(5)
         except websockets.exceptions.ConnectionClosed:
             print("WebSocket connection closed during send.")
         finally:
@@ -212,8 +225,10 @@ class ClientService:
         self.gameOver = message["over"]
         self.gamePoints = message["points"]
         self.pileSize = message["pileSize"]
+        print(message["currentTurn"], self.currName)
         if message["currentTurn"] == self.currName:
             self.myTurn = True
+            print("MY TURN")
 
     def print_game_update(self):
         print("/////////////////////////")

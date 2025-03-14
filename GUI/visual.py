@@ -40,6 +40,7 @@ class LoginQueueApp:
         self.GRAY = (200, 200, 200)
         self.LIGHT_BLUE = (173, 216, 230)
         self.GREEN = (100, 200, 100)
+        self.RED = (255, 0, 0)
 
         # Fonts
         self.title_font = pygame.font.Font(None, 48)
@@ -60,21 +61,21 @@ class LoginQueueApp:
         self.queue_position = None
 
         # Login screen elements
-        self.username_rect = pygame.Rect(250, 250, 300, 40)
-        self.password_rect = pygame.Rect(250, 350, 300, 40)
-        self.login_button_rect = pygame.Rect(300, 450, 200, 50)
-        self.register_button_rect = pygame.Rect(300, 520, 200, 40)
+        self.username_rect = pygame.Rect(self.screen_width//2 - 150, 250, 300, 40)
+        self.password_rect = pygame.Rect(self.screen_width//2 - 150, 350, 300, 40)
+        self.login_button_rect = pygame.Rect(self.screen_width//2 - 100, 450, 200, 50)
+        self.register_button_rect = pygame.Rect(self.screen_width//2 - 100, 520, 200, 40)
 
         # Register screen elements
-        self.reg_username_rect = pygame.Rect(250, 200, 300, 40)
-        self.reg_password_rect = pygame.Rect(250, 280, 300, 40)
-        self.confirm_password_rect = pygame.Rect(250, 360, 300, 40)
-        self.submit_register_rect = pygame.Rect(300, 440, 200, 50)
-        self.back_button_rect = pygame.Rect(300, 510, 200, 40)
+        self.reg_username_rect = pygame.Rect(self.screen_width//2 - 150, 200, 300, 40)
+        self.reg_password_rect = pygame.Rect(self.screen_width//2 - 150, 280, 300, 40)
+        self.confirm_password_rect = pygame.Rect(self.screen_width//2 - 150, 360, 300, 40)
+        self.submit_register_rect = pygame.Rect(self.screen_width//2 - 100, 440, 200, 50)
+        self.back_button_rect = pygame.Rect(self.screen_width//2 - 100, 510, 200, 40)
 
         # Queue screen buttons
-        self.enter_queue_rect = pygame.Rect(250, 250, 300, 50)
-        self.quit_button_rect = pygame.Rect(250, 350, 300, 50)
+        self.enter_queue_rect = pygame.Rect(self.screen_width//2 - 150, 250, 300, 50)
+        self.quit_button_rect = pygame.Rect(self.screen_width//2 - 150, 350, 300, 50)
 
         # Status message
         self.status_message = ""
@@ -97,14 +98,14 @@ class LoginQueueApp:
         # Username input
         pygame.draw.rect(self.screen, self.GRAY, self.username_rect, 2)
         username_text = self.font.render("Username:", True, self.BLACK)
-        self.screen.blit(username_text, (250, 220))
+        self.screen.blit(username_text, (self.screen_width // 2 - username_text.get_width()/2, 220))
         username_surface = self.font.render(self.username_input, True, self.BLACK)
         self.screen.blit(username_surface, (self.username_rect.x + 10, self.username_rect.y + 10))
 
         # Password input
         pygame.draw.rect(self.screen, self.GRAY, self.password_rect, 2)
         password_text = self.font.render("Password:", True, self.BLACK)
-        self.screen.blit(password_text, (250, 320))
+        self.screen.blit(password_text, (self.screen_width // 2 - password_text.get_width()/2, 320))
         # Render password as dots
         password_surface = self.font.render("*" * len(self.password_input), True, self.BLACK)
         self.screen.blit(password_surface, (self.password_rect.x + 10, self.password_rect.y + 10))
@@ -213,6 +214,7 @@ class LoginQueueApp:
             self.current_screen = "game"
 
     def draw_game_screen(self):
+        print("START")
         self.screen.fill(self.WHITE)
 
         # === Title ===
@@ -224,6 +226,8 @@ class LoginQueueApp:
             self.screen.blit(status_text,
                              status_text.get_rect(center=(self.screen_width // 2, self.screen_height // 2)))
             return
+
+        print("GOT GAME DATA")
 
         # Check if we're showing a detailed card view
         if hasattr(self, 'detailed_card') and self.detailed_card is not None:
@@ -246,6 +250,7 @@ class LoginQueueApp:
             y_offset += 40
 
         # === Deck (Scrollable) ===
+        print("DRAW DECK")
         deck_title = self.font.render("Deck:", True, self.BLACK)
         self.screen.blit(deck_title, deck_title.get_rect(midleft=(50, y_offset)))
 
@@ -255,14 +260,17 @@ class LoginQueueApp:
 
         deck_x_start = 120 - self.deck_scroll_offset
         for i, card_idx in enumerate(self.game_state["deck"]):
+            realCard = self.cardDAO.getNthCard(card_idx)
             card_rect = pygame.Rect(deck_x_start + i * 200, y_offset, 150, 240)
-            pygame.draw.rect(self.screen, self.LIGHT_BLUE, card_rect)
+            if realCard.type == "EVENT":
+                pygame.draw.rect(self.screen, self.LIGHT_BLUE, card_rect)
+            else:
+                pygame.draw.rect(self.screen, self.RED, card_rect)
             pygame.draw.rect(self.screen, self.BLACK, card_rect, 2)
 
             self.deck_card_rects.append((card_rect, card_idx))
 
             # Card Number
-            realCard = self.cardDAO.getNthCard(card_idx)
             title = realCard.title
             if len(title) > 15:
                 title = title[: 15] + "..."
@@ -317,13 +325,16 @@ class LoginQueueApp:
         self.player_card_rects = []
 
         for i, card_idx in enumerate(player_cards):
+            realCard = self.cardDAO.getNthCard(card_idx)
             card_rect = pygame.Rect(start_x + i * card_width + 10, player_stats_y + 40, card_width, card_height)
             self.player_card_rects.append((card_rect, card_idx))
 
-            pygame.draw.rect(self.screen, (255, 255, 0) if self.selected_card == i else self.LIGHT_BLUE, card_rect)
+            if realCard.type == "EVENT":
+                pygame.draw.rect(self.screen, (255, 255, 0) if self.selected_card == i else self.LIGHT_BLUE, card_rect)
+            else:
+                pygame.draw.rect(self.screen, (255, 255, 0) if self.selected_card == i else self.RED, card_rect)
             pygame.draw.rect(self.screen, self.BLACK, card_rect, 2)
 
-            realCard = self.cardDAO.getNthCard(card_idx)
             title = realCard.title
             if len(title) > 15:
                 title = title[: 15] + "..."
@@ -384,12 +395,18 @@ class LoginQueueApp:
 
         # If the card has an image loaded, use it; otherwise use a placeholder
         if hasattr(card, 'index') and card.index:
+            image = None
             try:
                 image = pygame.image.load(f"../cardImages/{card.index}.png")
             except FileNotFoundError:
+                pass
+            try:
                 image = pygame.image.load(f"../cardImages/{card.index}.jpg")
-            image = pygame.transform.scale(image, (card_width - 40, image_height))
-            self.screen.blit(image, image_rect)
+            except FileNotFoundError:
+                pass
+            if image is not None:
+                image = pygame.transform.scale(image, (card_width - 40, image_height))
+                self.screen.blit(image, image_rect)
         else:
             print(f"../cardImages/{card.index}.png")
             pygame.draw.rect(self.screen, self.LIGHT_BLUE, image_rect)

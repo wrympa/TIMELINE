@@ -1,3 +1,4 @@
+import asyncio
 import json
 from asyncio import sleep, create_task, CancelledError
 import uvicorn
@@ -81,28 +82,27 @@ class GameAPI:
 
                 # Wait until it's this player's turn
                 while not self.game_over:
-                    while self.gameService.getCurrentTurnPlayer() != player_id:
-                        await sleep(1)
-
-                        # Check if game is still active
-                        if self.game_over:
-                            print(f"Game over detected during player {player_id}'s wait")
-                            return
-
                     print(f"WebSocket endpoint state: {websocket.client_state}")
-                    data = await websocket.receive()
+                    # data = await websocket.receive()
 
+                    data = await asyncio.wait_for(
+                        websocket.receive_text(),
+                        timeout=300.0  # 60 seconds timeout
+                    )
                     # Check if game is still active before processing move
 
-                    print("DATA IS",data)
-                    data = json.loads(data["text"])
-                    print(f"DATA IS {data}")
+                    data = json.loads(data)
+                    print("DATA IS", data)
 
-                    if self.gameService:
-                        self.gameService.processMove(player_id, data)
-                        self.gameService.advance()
-                        print("BROADCASTING")
-                        await self.broadcast_game_state()
+                    try:
+                        pingInfo = data["sendJi"]
+                        print(f"PING INFO FROM {player_id}", pingInfo)
+                    except KeyError:
+                        if self.gameService:
+                            self.gameService.processMove(player_id, data)
+                            self.gameService.advance()
+                            print("BROADCASTING")
+                            await self.broadcast_game_state()
 
             except WebSocketDisconnect:
                 print(f"Player {player_id} disconnected.")
