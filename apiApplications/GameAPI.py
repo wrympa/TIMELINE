@@ -1,10 +1,14 @@
 import asyncio
 import json
 from asyncio import sleep, create_task, CancelledError
+from datetime import datetime
+
 import uvicorn
 import requests
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+from models.Ping import Ping
 from service.GameService import GameService
 
 
@@ -48,12 +52,9 @@ class GameAPI:
         async def websocket_endpoint(websocket: WebSocket, player_id: str):
             await websocket.accept()
 
-            # Check if this is a reconnect during an active game
-            is_reconnect = self.gameService is not None and player_id in self.gameService.getPlayers()
-
             # Store the connection
             self.connections[player_id] = websocket
-            print(f"Player {player_id} connected. Reconnect: {is_reconnect}")
+            print(f"Player {player_id} connected.")
 
             # If all players are connected and game not started, start game
             print("playazz", len(self.connections.keys()))
@@ -67,14 +68,6 @@ class GameAPI:
                 # Start monitoring connections after game starts
                 if not self.connection_monitor_task or self.connection_monitor_task.done():
                     self.connection_monitor_task = create_task(self.monitor_connections())
-
-            # If this is a reconnect, send the current state to the player
-            elif is_reconnect:
-                try:
-                    state = self.gameService.getGameState()
-                    await websocket.send_json(state.dict())
-                except Exception as e:
-                    print(f"Error sending state on reconnect to {player_id}: {e}")
 
             try:
                 while self.gameService is None:
@@ -174,23 +167,28 @@ class GameAPI:
         except Exception as e:
             print(f"Failed to notify game manager of game end: {e}")
 
-    async def check_game_over(self):
-        """Check if the game is over based on connection count and game state."""
-        if self.gameService and (self.game_over or (self.gameService.getGameState().over)):
-            print("GAME OVER detected")
-            self.game_over = True
-            await self.finish_game()
-
     async def monitor_connections(self):
-        """Continuously monitor connections to detect game over state."""
         try:
             while not self.game_over:
                 await sleep(5)
 
-                # Check if game is over through the game state
-                if self.gameService and self.gameService.getGameState().over:
-                    print("Game over detected by monitor")
+                pingInfo = Ping(sendJi=str(datetime.utcnow().timestamp()))
+                pingInfo = pingInfo.dict()
+
+                for player_id, ws in self.connections.items():
+                    print("SENDING STATE TO", player_id)
+                    await ws.send_json(pingInfo)
+
+                if self.gameService and len(self.connections) < 4:
+                    print("Game over via DC")
                     self.game_over = True
+
+                    state = self.gameService.getGameState()
+                    stateDict = state.dict()
+                    stateDict["over"] = True
+                    for player_id, ws in self.connections.items():
+                        print("SENDING STATE TO", player_id)
+                        await ws.send_json(stateDict)
                     break
 
             await self.finish_game()
@@ -208,29 +206,13 @@ class GameAPI:
                 stateDict = state.dict()
                 print("STATE GOT it's", stateDict)
 
-                # Update game_over status from state
                 if stateDict.get("over", False):
                     self.game_over = True
 
-                # Send state to all connected players
-                disconnected_players = []
                 for player_id, ws in self.connections.items():
-                    try:
-                        await ws.send_json(stateDict)
-                    except Exception as e:
-                        print(f"Error sending to {player_id}: {e}")
-                        disconnected_players.append(player_id)
+                    print("SENDING STATE TO", player_id)
+                    await ws.send_json(stateDict)
 
-                # Remove disconnected players
-                for player_id in disconnected_players:
-                    if player_id in self.connections:
-                        del self.connections[player_id]
-
-                # Check if game should end due to disconnections
-                if len(self.connections) < 4 and not self.game_over:
-                    print(f"Not enough players ({len(self.connections)}/4) after broadcasting")
-
-                # Check if game is over
                 if self.game_over:
                     print("Game over detected during broadcast")
                     await self.finish_game()

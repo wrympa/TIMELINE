@@ -19,8 +19,10 @@ class LoginQueueApp:
         self.cardDAO = CardDAO()
         self.selected_card = None
         self.position_input = ""
+        self.end_position_input = ""
         self.player_card_rects = []
         self.position_input_rect = None
+        self.end_position_input_rect = None
         self.make_move_rect = None
         self.game_state = None
         self.game_over_timer_set = False
@@ -214,7 +216,6 @@ class LoginQueueApp:
             self.current_screen = "game"
 
     def draw_game_screen(self):
-        print("START")
         self.screen.fill(self.WHITE)
 
         # === Title ===
@@ -226,8 +227,6 @@ class LoginQueueApp:
             self.screen.blit(status_text,
                              status_text.get_rect(center=(self.screen_width // 2, self.screen_height // 2)))
             return
-
-        print("GOT GAME DATA")
 
         # Check if we're showing a detailed card view
         if hasattr(self, 'detailed_card') and self.detailed_card is not None:
@@ -250,7 +249,6 @@ class LoginQueueApp:
             y_offset += 40
 
         # === Deck (Scrollable) ===
-        print("DRAW DECK")
         deck_title = self.font.render("Deck:", True, self.BLACK)
         self.screen.blit(deck_title, deck_title.get_rect(midleft=(50, y_offset)))
 
@@ -262,27 +260,28 @@ class LoginQueueApp:
         for i, card_idx in enumerate(self.game_state["deck"]):
             realCard = self.cardDAO.getNthCard(card_idx)
             card_rect = pygame.Rect(deck_x_start + i * 200, y_offset, 150, 240)
-            if realCard.type == "EVENT":
-                pygame.draw.rect(self.screen, self.LIGHT_BLUE, card_rect)
-            else:
-                pygame.draw.rect(self.screen, self.RED, card_rect)
+
+            # Color based on card type
+            card_color = self.LIGHT_BLUE if realCard.type == "EVENT" else self.RED
+            pygame.draw.rect(self.screen, card_color, card_rect)
             pygame.draw.rect(self.screen, self.BLACK, card_rect, 2)
 
             self.deck_card_rects.append((card_rect, card_idx))
 
-            # Card Number
+            # Card title with truncation if needed
             title = realCard.title
             if len(title) > 15:
-                title = title[: 15] + "..."
+                title = title[:15] + "..."
             card_text = self.small_font.render(title, True, self.BLACK)
             self.screen.blit(card_text, card_text.get_rect(center=card_rect.center))
 
-            mid_x_prev = deck_x_start + i * 200 - 25  # Midpoint between this card and the next
-            mid_x_next = deck_x_start + (i+1) * 200 - 25  # Midpoint between this card and the next
+            # Position indicators
+            mid_x_prev = deck_x_start + i * 200 - 25
+            mid_x_next = deck_x_start + (i + 1) * 200 - 25
             placement_text_prev = self.small_font.render(str(i), True, self.BLACK)
             placement_text_next = self.small_font.render(str(i + 1), True, self.BLACK)
-            self.screen.blit(placement_text_prev, (mid_x_prev, y_offset + 250))  # Just below the cards
-            self.screen.blit(placement_text_next, (mid_x_next, y_offset + 250))  # Just below the cards
+            self.screen.blit(placement_text_prev, (mid_x_prev, y_offset + 250))
+            self.screen.blit(placement_text_next, (mid_x_next, y_offset + 250))
 
         y_offset += 300  # Ensure space before opponents
 
@@ -298,6 +297,7 @@ class LoginQueueApp:
             opp_name = self.font.render(f"Player {opp_id}: {points} pts", True, name_color)
             self.screen.blit(opp_name, opp_name.get_rect(midleft=(50, opp_y)))
 
+            # Draw opponent's cards
             card_start_x = 200
             for j in range(len(self.game_state["hands"][opp_id])):
                 card_rect = pygame.Rect(card_start_x + j * 30, opp_y + 30, 25, 50)
@@ -323,39 +323,58 @@ class LoginQueueApp:
         start_x = player_stats_x - total_width // 2  # Center within the stats area
 
         self.player_card_rects = []
+        selectedCard = None
 
         for i, card_idx in enumerate(player_cards):
             realCard = self.cardDAO.getNthCard(card_idx)
             card_rect = pygame.Rect(start_x + i * card_width + 10, player_stats_y + 40, card_width, card_height)
             self.player_card_rects.append((card_rect, card_idx))
 
+            if self.selected_card == i:
+                selectedCard = realCard
+
+            # Highlight selected card or use standard color based on type
+            is_selected = self.selected_card == i
             if realCard.type == "EVENT":
-                pygame.draw.rect(self.screen, (255, 255, 0) if self.selected_card == i else self.LIGHT_BLUE, card_rect)
+                card_color = (255, 255, 0) if is_selected else self.LIGHT_BLUE
             else:
-                pygame.draw.rect(self.screen, (255, 255, 0) if self.selected_card == i else self.RED, card_rect)
+                card_color = (255, 255, 0) if is_selected else self.RED
+
+            pygame.draw.rect(self.screen, card_color, card_rect)
             pygame.draw.rect(self.screen, self.BLACK, card_rect, 2)
 
+            # Card title
             title = realCard.title
             if len(title) > 15:
-                title = title[: 15] + "..."
+                title = title[:15] + "..."
             card_text = self.mini_font.render(title, True, self.BLACK)
             self.screen.blit(card_text, card_text.get_rect(center=card_rect.center))
 
         # === Input & Button (Below Player Cards) ===
+        # Show pile size
         pileSize_x = self.screen_width - 300
         pileSize_y = self.screen_height - 100
+        pile_text = self.font.render(f"Cards left in pile: {self.game_state['pileSize']}", True, self.BLACK)
+        self.screen.blit(pile_text, pile_text.get_rect(midleft=(pileSize_x, pileSize_y)))
 
-        player_name = self.font.render(f"Cards left in pile: {self.game_state['pileSize']}", True, self.BLACK)
-        self.screen.blit(player_name, player_name.get_rect(midleft=(pileSize_x, pileSize_y)))
-
+        # Position for input fields
         input_x = player_stats_x + 20
         input_y = self.screen_height - 130
 
-        # Text Input for Index
+        # First position input field
         self.position_input_rect = pygame.Rect(input_x, input_y, 100, 40)
         pygame.draw.rect(self.screen, self.GRAY, self.position_input_rect, 2)
         position_text_surface = self.font.render(self.position_input, True, self.BLACK)
         self.screen.blit(position_text_surface, (self.position_input_rect.x + 10, self.position_input_rect.y + 10))
+
+        # Second position input field for PERIOD cards
+        # Fixed: Check if selected_card is not None and the selected card is a PERIOD type
+        if self.selected_card is not None and selectedCard and selectedCard.type == "PERIOD":
+            self.end_position_input_rect = pygame.Rect(input_x + 120, input_y, 100, 40)
+            pygame.draw.rect(self.screen, self.GRAY, self.end_position_input_rect, 2)
+            end_position_text_surface = self.font.render(self.end_position_input, True, self.BLACK)
+            self.screen.blit(end_position_text_surface,
+                             (self.end_position_input_rect.x + 10, self.end_position_input_rect.y + 10))
 
         # "Make Move" Button
         self.make_move_rect = pygame.Rect(input_x, input_y + 50, 150, 40)
@@ -488,8 +507,6 @@ class LoginQueueApp:
             self.status_color = (255, 0, 0)  # Red for error
 
     def make_move(self, card_idx, position):
-        """Send the move to the server"""
-        # Validate that it's the player's turn
         player_id = self.clientService.currName
         if self.game_state["currentTurn"] != player_id:
             self.status_message = "Not your turn!"
@@ -497,13 +514,14 @@ class LoginQueueApp:
             return
 
         print("TRYING")
-        print("lel", card_idx, [position])
-        self.clientService.recieveMoveFromVisuals(card_idx, [position])
+        print("lel", card_idx, position)
+        self.clientService.recieveMoveFromVisuals(card_idx, position)
         print("SUCCING")
 
         # Clear selection and input after move
         self.selected_card = None
         self.position_input = ""
+        self.end_position_input = ""
         self.active_input = None
         self.status_message = "Move sent!"
         self.status_color = self.GREEN
@@ -655,7 +673,7 @@ class LoginQueueApp:
                         try:
                             position = int(self.position_input)
                             if self.selected_card is not None:
-                                self.make_move(self.selected_card, position)
+                                self.MultiArgMakeMove()
                         except ValueError:
                             pass
 
@@ -668,11 +686,12 @@ class LoginQueueApp:
 
             if self.position_input_rect and self.position_input_rect.collidepoint(pos):
                 self.active_input = "position"
+            elif self.end_position_input_rect and self.end_position_input_rect.collidepoint(pos):
+                self.active_input = "end_position"
             elif self.make_move_rect and self.make_move_rect.collidepoint(pos):
                 if self.selected_card is not None and self.position_input:
                     try:
-                        position = int(self.position_input)
-                        self.make_move(self.selected_card, position)
+                        self.MultiArgMakeMove()
                     except ValueError:
                         self.status_message = "Please enter a valid position number"
                         self.status_color = (255, 0, 0)
@@ -687,11 +706,9 @@ class LoginQueueApp:
         elif event.key == pygame.K_RIGHT:  # Scroll right
             self.deck_scroll_offset += 60  # Move right
         if hasattr(self, 'detailed_card') and self.detailed_card is not None:
-            # Close detailed view on ESC key
             if event.key == pygame.K_ESCAPE:
                 self.detailed_card = None
         elif event.key == pygame.K_TAB:
-            # Handle tab key for input field navigation
             if self.current_screen == "login":
                 if self.active_input == "username":
                     self.active_input = "password"
@@ -706,7 +723,7 @@ class LoginQueueApp:
                     self.active_input = "username"
             elif self.current_screen == "game":
                 if self.active_input == "position":
-                    self.active_input = None
+                    self.active_input = "end_position"
                 else:
                     self.active_input = "position"
 
@@ -729,8 +746,7 @@ class LoginQueueApp:
             elif self.current_screen == "game" and self.active_input == "position" and not self.game_over_timer_set:
                 if self.selected_card is not None and self.position_input:
                     try:
-                        position = int(self.position_input)
-                        self.make_move(self.selected_card, position)
+                        self.MultiArgMakeMove()
                     except ValueError:
                         self.status_message = "Please enter a valid position number"
                         self.status_color = (255, 0, 0)
@@ -744,6 +760,8 @@ class LoginQueueApp:
                 self.confirm_password_input = self.confirm_password_input[:-1]
             elif self.active_input == "position":
                 self.position_input = self.position_input[:-1]
+            elif self.active_input == "end_position":
+                self.end_position_input = self.end_position_input[:-1]
 
         elif self.active_input:
             if self.active_input == "username":
@@ -754,6 +772,17 @@ class LoginQueueApp:
                 self.confirm_password_input += event.unicode
             elif self.active_input == "position" and event.unicode.isdigit():
                 self.position_input += event.unicode
+            elif self.active_input == "end_position" and event.unicode.isdigit():
+                self.end_position_input += event.unicode
+
+    def MultiArgMakeMove(self):
+        if self.end_position_input and len(self.end_position_input) > 0:
+            position = int(self.position_input)
+            end_position = int(self.end_position_input)
+            self.make_move(self.selected_card, [position, end_position])
+        else:
+            position = int(self.position_input)
+            self.make_move(self.selected_card, [position])
 
 
 def main():

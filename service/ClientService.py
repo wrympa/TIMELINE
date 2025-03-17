@@ -14,6 +14,7 @@ from urllib.parse import urlparse
 
 from models.Ping import Ping
 from models.PlayerMove import PlayerMove
+from service.CardDAO import CardDAO
 
 
 class ClientService:
@@ -34,12 +35,11 @@ class ClientService:
         self.addressAddr = "http://127.0.0.1:9090"
         self.websocket = None
         self.gameAddrs = ""
+        self.cardDAO = CardDAO()
 
-        # Get service addresses
         self.get_service_addresses()
         atexit.register(self.cleanup)
 
-        # Use asyncio to run the main client loop
         self.visual = visual
         if not self.visual:
             asyncio.run(self.start_client())
@@ -62,6 +62,7 @@ class ClientService:
         sign up = REG [USRNAME] [PASS]
         log in = LOG [USRNAME] [PASS]
         enter queue = QUE
+        inspect card = INSP [Cards Index]
         quit = QUIT
         """)
 
@@ -115,7 +116,7 @@ class ClientService:
                 print("Connected to game server!")
                 self.websocket = websocket
                 self.websocket.close_timeout = 500
-                await self.manage_game_tasks(websocket)
+                await self.manage_game_tasks()
 
         except websockets.exceptions.WebSocketException as e:
             print(f"WebSocket error: {e}")
@@ -138,7 +139,7 @@ class ClientService:
         self.gameAddrs = ""
         self.gameStateDict = None
 
-    async def manage_game_tasks(self, websocket):
+    async def manage_game_tasks(self):
         receive_task = asyncio.create_task(self.receive_messages())
         send_task = asyncio.create_task(self.send_messages())
         keepAlive_task = asyncio.create_task(self.keepPinging())
@@ -157,16 +158,43 @@ class ClientService:
         return await asyncio.to_thread(input,
                                        "Your move: format is [CARD_INDEX] [PLACE 1] [PLACE 2 (if its period card)]:")
 
-
     async def receive_messages(self):
         try:
+            lastRecvd = datetime.utcnow().timestamp()
             while not self.gameOver:
-                message = await self.websocket.recv()
-                self.process_update(message)
-                self.print_game_update()
+                if datetime.utcnow().timestamp() - lastRecvd > 60:
+                    print("No message received in 5 minutes. Handling timeout...")
+                    self.gameOver = True
+                    return
+
+                try:
+                    message = await asyncio.wait_for(self.websocket.recv(), timeout=5.0)
+
+                    try:
+                        data = message
+
+                        # print(data, "sendJi" in data)
+                        if "sendJi" in data:
+                            data = json.loads(message)
+                            # print(f"PING INFO FROM server", data["sendJi"])
+                            lastRecvd = datetime.utcnow().timestamp()
+                        else:
+                            self.process_update(data)
+                            self.print_game_update()
+                            lastRecvd = datetime.utcnow().timestamp()
+                    except json.JSONDecodeError:
+                        print("Received non-JSON message:", message)
+                        lastRecvd = datetime.utcnow().timestamp()
+
+                except asyncio.TimeoutError:
+                    pass
                 await asyncio.sleep(1)
-        except websockets.exceptions.ConnectionClosed:
-            print("WebSocket connection closed.")
+        except websockets.exceptions.ConnectionClosed as e:
+            print(f"WebSocket connection closed: {e}")
+            self.gameOver = True
+        except Exception as e:
+            print(f"Error in receive_messages: {e}")
+            self.gameOver = True
         finally:
             print("Receive messages task ended.")
 
@@ -185,12 +213,17 @@ class ClientService:
                     if self.myTurn:
                         move = await self.get_user_input()
                         parts = move.split(' ')
-                        cardIndex = int(parts[0])
-                        cardPlace = [int(parts[1])] if len(parts) == 2 else [int(parts[1]), int(parts[2])]
-                        playerMove = PlayerMove(cardIndex=cardIndex, cardPlaces=cardPlace)
-                        playerMoveDict = playerMove.model_dump()
-                        await self.websocket.send(json.dumps(playerMoveDict))
-                        self.myTurn = False
+                        if parts[0] == "INSP":
+                            realCard = self.cardDAO.getNthCard(int(parts[1]))
+                            print("TITLE:", realCard.title)
+                            print("DESCR:", realCard.descr)
+                        else:
+                            cardIndex = int(parts[0])
+                            cardPlace = [int(parts[1])] if len(parts) == 2 else [int(parts[1]), int(parts[2])]
+                            playerMove = PlayerMove(cardIndex=cardIndex, cardPlaces=cardPlace)
+                            playerMoveDict = playerMove.model_dump()
+                            await self.websocket.send(json.dumps(playerMoveDict))
+                            self.myTurn = False
                     else:
                         await asyncio.sleep(5)
                 else:

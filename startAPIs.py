@@ -57,15 +57,13 @@ def main():
         ".\\apiApplications\\GameAPI.py"
     ]
 
-    # Convert Windows paths to the appropriate format for other OS
     if platform.system().lower() != "windows":
         api_paths = [path.replace("\\", "/") for path in api_paths]
 
-    # Launch each API in order with a delay
     for api_path in api_paths:
         print(f"Launching {api_path}...")
         launch_api(api_path)
-        time.sleep(2)  # Wait 2 seconds between launches
+        time.sleep(2)
 
     print("All APIs have been launched in separate terminals.")
     print("Press Ctrl+C in each terminal window to stop the individual APIs.")

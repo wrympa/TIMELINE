@@ -55,9 +55,6 @@ class CardDAO:
         for row in cursor.fetchall():
             index, title, descr, s_y, s_m, s_d, eventType, e_y, e_m, e_d = row
 
-            # Determine if this is an event or period based on index
-            # (assuming first 75 are events as in your original code)
-            # Create Card object using the data from the database
             card = Card(
                 index=index,
                 type=eventType,
@@ -73,5 +70,4 @@ class CardDAO:
 
             self.cards.append(card)
 
-        # Close the database connection
         conn.close()

@@ -22,11 +22,14 @@ class GameService:
         self.gameProcessString = ""
 
     def playEventCard(self, card: Card, index: int):
+        print(f"placing at {index}")
         lCard = None
         rCard = None
-        if index - 1 >= 0:
+        print(0, index - 1, len(self.deck))
+        if 0 <= (index - 1) < len(self.deck):
             lCard = self.deck[index - 1]
-        if index <= len(self.deck) - 1:
+        print(0, index, len(self.deck))
+        if 0 <= index < len(self.deck):
             rCard = self.deck[index]
 
         if lCard is None and rCard is None:
@@ -45,6 +48,7 @@ class GameService:
                 self.deck.insert(index, card)
                 return 100
 
+        print("ADDING CORRECT WAY")
         new_index = 0
         curr_card = self.deck[new_index]
         while card >= curr_card:
@@ -52,15 +56,14 @@ class GameService:
             if new_index >= len(self.deck):
                 break
             curr_card = self.deck[new_index]
+        print("TRUE INDEX", new_index)
         self.deck.insert(new_index, card)
+        print("ADDED")
         return -100
 
     def playPeriodCard(self, card: Card, indexes: List[int]):
         lCard = copy(card)
         rCard = copy(card)
-        rCard.s_year = card.e_year
-        rCard.s_month = card.e_month
-        rCard.s_day = card.e_day
         return self.playEventCard(lCard, indexes[0]) + self.playEventCard(rCard, indexes[1])
 
     def removeCardFromHand(self, player: str, cardToRemove: Card):
@@ -74,6 +77,7 @@ class GameService:
             print(f"Player {player} not found.")
 
     def playCard(self, card: Card, index: List[int]):
+        print(card, index)
         self.removeCardFromHand(self.players[self.currentTurn], card)
 
         if len(self.hands[self.players[self.currentTurn]]) == 0 and len(self.pile) == 0:
@@ -81,9 +85,11 @@ class GameService:
 
         if len(self.pile) > 0:
             self.hands[self.players[self.currentTurn]].append(self.pile.pop())
-        if card.type == "EVENT":
+        if len(index) == 1:
+            print("PLAY AS EVENT")
             return self.playEventCard(card, index[0])
         else:
+            print("PLAY AS PERIOD")
             return self.playPeriodCard(card, index)
 
     def writePoints(self, points: int):
