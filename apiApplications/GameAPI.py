@@ -23,7 +23,7 @@ class GameAPI:
         self.port = port
         self.app = FastAPI()
         self.trueAddress = f"http://{host}:{port}"
-        self.addressAddr = "http://127.0.0.1:9090"
+        self.addressAddr = "https://timeline-production-1416.up.railway.app"
         self.gameManagerAddrs = ""
         self.gameService = None
         self.connections = {}

@@ -25,7 +25,7 @@ class AuthAPI:
         self.register_routes()
 
     def register_routes(self):
-        response = requests.post("http://127.0.0.1:9090/setAuthAddress", json=self.addressStruct.model_dump())
+        response = requests.post("https://timeline-production-1416.up.railway.app/setAuthAddress", json=self.addressStruct.model_dump())
         print("RESP FOR SETTING ADDRESS OF QUEUE ", response.json())
 
         @self.app.post("/tryRegister")

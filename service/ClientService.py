@@ -34,7 +34,7 @@ class ClientService:
         characters = string.ascii_letters
         self.currName = "GUEST" + ''.join(random.choice(characters) for _ in range(10))
         self.loggedOn = False
-        self.addressAddr = "http://127.0.0.1:9090"
+        self.addressAddr = "https://timeline-production-1416.up.railway.app"
         self.websocket = None
         self.gameAddrs = ""
         self.cardDAO = CardDAO()

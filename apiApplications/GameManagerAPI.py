@@ -23,7 +23,7 @@ class GameManagerAPI:
 
     def register_routes(self):
         try:
-            response = requests.post("http://127.0.0.1:9090/setGameManagerAddress", json=self.addressStruct.dict())
+            response = requests.post("https://timeline-production-1416.up.railway.app/setGameManagerAddress", json=self.addressStruct.dict())
             print("RESP FOR SETTING ADDRESS OF GameManager ", response.json())
         except Exception as e:
             print(f"Error registering game manager address: {e}")

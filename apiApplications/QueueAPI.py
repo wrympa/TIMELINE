@@ -32,10 +32,10 @@ class QueueAPI:
         self.worker_thread.start()
 
     def register_routes(self):
-        response = requests.post("http://127.0.0.1:9090/setQueueAddress", json=self.addressStruct.dict())
+        response = requests.post("https://timeline-production-1416.up.railway.app/setQueueAddress", json=self.addressStruct.dict())
         print("RESP FOR SETTING ADDRESS OF QUEUE ", response.json())
 
-        gameManagerResponse = requests.get(f"http://127.0.0.1:9090/gameManagerAddress")
+        gameManagerResponse = requests.get(f"https://timeline-production-1416.up.railway.app/gameManagerAddress")
         self.gameManagerAddr = f"{gameManagerResponse.json()['message']}"
 
         @self.app.post("/enqueue")
