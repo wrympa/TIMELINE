@@ -1,2 +1,9 @@
 fastapi
 uvicorn
+requests
+json
+asyncio
+datetime
+httpx
+threading
+time
