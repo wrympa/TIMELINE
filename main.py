@@ -1,33 +1,69 @@
+import platform
+import subprocess
+import time
 import os
-from asyncio import events
-
-from icrawler import ImageDownloader
-from icrawler.builtin import GoogleImageCrawler
-
-historical_periods = [
-    "Pro-Trump supporters storm the Capitol building."
-]
 
 
-def download_images_to_folders(eventss):
-    event_id = 171
-    for event_name in historical_periods:
-        # Create a folder for each event using the event ID
-        event_dir = f"cardImages/"
+def get_terminal_command():
+    system = platform.system().lower()
+    if system == "windows":
+        return ["start", "cmd", "/k"]
+    elif system == "darwin":  # macOS
+        return ["osascript", "-e", 'tell app "Terminal" to do script']
+    elif system == "linux":
+        # Try different terminal emulators
+        if subprocess.run(["which", "gnome-terminal"], capture_output=True).returncode == 0:
+            return ["gnome-terminal", "--"]
+        elif subprocess.run(["which", "xterm"], capture_output=True).returncode == 0:
+            return ["xterm", "-e"]
+        elif subprocess.run(["which", "konsole"], capture_output=True).returncode == 0:
+            return ["konsole", "-e"]
+    raise OSError(f"Unsupported operating system or no terminal emulator found: {system}")
 
 
-        crawler = GoogleImageCrawler(storage={'root_dir': event_dir})
+def launch_api(api_path):
+    system = platform.system().lower()
+    python_cmd = f"python {api_path}"
 
-        # Crawl and download images for the given event name
-        crawler.crawl(keyword=event_name, max_num=1)  # Download only 1 image
-        try:
-            os.rename("cardImages/000001.png", f"cardImages/{event_id}.png")
-        except:
-            try:
-                os.rename("cardImages/000001.jpg", f"cardImages/{event_id}.jpg")
-            except:
-                os.rename("cardImages/000001.jpeg", f"cardImages/{event_id}.jpeg")
-        event_id += 1
+    try:
+        if system == "windows":
+            # For Windows, we need to use shell=True and the complete command
+            full_command = f"start cmd /k {python_cmd}"
+            subprocess.Popen(full_command, shell=True)
+
+        elif system == "darwin":  # macOS
+            # For macOS, we need to escape the command for AppleScript
+            apple_script = f'tell app "Terminal" to do script "{python_cmd}"'
+            subprocess.Popen(["osascript", "-e", apple_script])
+
+        else:  # Linux
+            # Get the appropriate terminal command
+            terminal_cmd = get_terminal_command()
+            # Combine the terminal command with the Python command
+            full_command = terminal_cmd + [python_cmd]
+            subprocess.Popen(full_command)
+
+    except Exception as e:
+        print(f"Error launching {api_path}: {e}")
 
 
-download_images_to_folders(events)
+def main():
+    # List of API paths in order
+    api_paths = [
+        ".\\apiApplications\\AddressAPI.py"
+    ]
+
+    if platform.system().lower() != "windows":
+        api_paths = [path.replace("\\", "/") for path in api_paths]
+
+    for api_path in api_paths:
+        print(f"Launching {api_path}...")
+        launch_api(api_path)
+        time.sleep(2)
+
+    print("All APIs have been launched in separate terminals.")
+    print("Press Ctrl+C in each terminal window to stop the individual APIs.")
+
+
+if __name__ == "__main__":
+    main()
