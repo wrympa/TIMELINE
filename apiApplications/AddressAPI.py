@@ -55,8 +55,9 @@ class AddressAPI:
 
 
 if __name__ == "__main__":
-    host = "127.0.0.1"
-    post = 9090
-    api = AddressAPI(host, post)
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", 9090))
+
+    api = AddressAPI(host, port)
     app = api.app
-    uvicorn.run(app, host=host, port=post)
+    uvicorn.run(app, host=host, port=port)
