@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 requests
-json
 asyncio
 datetime
 httpx
