@@ -20,7 +20,7 @@ class AuthAPI:
         self.app = FastAPI()
         self.authDAO = AccountDAO()
         self.addressStruct = RegisterAddrRequest()
-        self.addressStruct.address = f"http://{host}:{port}"
+        self.addressStruct.address = f"https://timeline-production-79fd.up.railway.app"
 
         self.register_routes()
 
