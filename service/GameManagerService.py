@@ -1,12 +1,4 @@
-from multiprocessing import Process
 from threading import Lock
-from typing import List
-
-import requests
-import uvicorn
-
-from apiApplications.GameAPI import GameAPI
-from models.EnqueueRequest import EnqueueRequest
 
 
 class GameManagerService:

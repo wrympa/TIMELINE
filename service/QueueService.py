@@ -1,10 +1,10 @@
+import os
+import sys
 from threading import Lock
 from typing import List
 
-import requests
-
-from models.EnqueueRequest import EnqueueRequest
-from service.GameManagerService import GameManagerService
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
+from EnqueueRequest import EnqueueRequest
 
 
 class QueueService:

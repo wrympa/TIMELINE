@@ -1,16 +1,13 @@
 import sys
 import os
-
-from models.StartServerRequest import StartServerRequest
-from service.GameManagerService import GameManagerService
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import uvicorn
 import requests
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'service')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
 
-from models.EnqueueRequest import EnqueueRequest
-from models.RegisterAddrRequest import RegisterAddrRequest
+from StartServerRequest import StartServerRequest
+from GameManagerService import GameManagerService
+from RegisterAddrRequest import RegisterAddrRequest
 from fastapi import FastAPI, HTTPException
 
 
@@ -70,8 +67,7 @@ class GameManagerAPI:
 
 
 if __name__ == "__main__":
-    host = "127.0.0.1"
-    port = 9093
-    api = GameManagerAPI(host, port)
-    app = api.app
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", 9093))
+    app = GameManagerAPI(host, port).app
     uvicorn.run(app, host=host, port=port)

@@ -1,7 +1,6 @@
 import sys
 import os
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from threading import Thread
 from time import sleep
@@ -9,11 +8,13 @@ from time import sleep
 import uvicorn
 import requests
 
-from models.EnqueueRequest import EnqueueRequest
-from models.RegisterAddrRequest import RegisterAddrRequest
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'service')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
+from EnqueueRequest import EnqueueRequest
+from RegisterAddrRequest import RegisterAddrRequest
 from fastapi import FastAPI
 
-from service.QueueService import QueueService
+from QueueService import QueueService
 
 
 class QueueAPI:
@@ -78,8 +79,7 @@ class QueueAPI:
 
 
 if __name__ == "__main__":
-    host = "127.0.0.1"
-    port = 9092
-    api = QueueAPI(host, port)
-    app = api.app
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", 9092))
+    app = QueueAPI(host, port).app
     uvicorn.run(app, host=host, port=port)

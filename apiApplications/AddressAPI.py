@@ -1,8 +1,11 @@
 import os
+import sys
 import uvicorn
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'service')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
 from fastapi import FastAPI
-from service.AddressDAO import AddressDAO
-from models.RegisterAddrRequest import RegisterAddrRequest
+from AddressDAO import AddressDAO
+from RegisterAddrRequest import RegisterAddrRequest
 
 
 class AddressAPI:

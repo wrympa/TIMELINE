@@ -1,6 +1,6 @@
 import requests
 
-response = requests.get("http://127.0.0.1:9090/authAddress")
+response = requests.get("https://timeline-production-1416.up.railway.app/authAddress")
 print(response.json())
-response = requests.get("http://127.0.0.1:9090/queueAddress")
+response = requests.get("https://timeline-production-1416.up.railway.app/queueAddress")
 print(response.json())

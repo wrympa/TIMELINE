@@ -12,9 +12,11 @@ import atexit
 from typing import List
 from urllib.parse import urlparse
 
-from models.Ping import Ping
-from models.PlayerMove import PlayerMove
-from service.CardDAO import CardDAO
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'service')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
+from Ping import Ping
+from PlayerMove import PlayerMove
+from CardDAO import CardDAO
 
 
 class ClientService:

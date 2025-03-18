@@ -1,15 +1,16 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import uvicorn
 import requests
 
 from fastapi import FastAPI
 
-from models.RegisterAddrRequest import RegisterAddrRequest
-from models.RegisterUserRequest import RegisterUserRequest
-from service.AccountDAO import AccountDAO
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'service')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
+from RegisterAddrRequest import RegisterAddrRequest
+from RegisterUserRequest import RegisterUserRequest
+from AccountDAO import AccountDAO
 
 
 class AuthAPI:
@@ -42,8 +43,9 @@ class AuthAPI:
             return {"message": answer}
 
 
+
 if __name__ == "__main__":
-    host = "127.0.0.1"
-    port = 9091
-    api = AuthAPI(host, port)
-    uvicorn.run(api.app, host=host, port=port)
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", 9091))
+    app = AuthAPI(host, str(port)).app
+    uvicorn.run(app, host=host, port=port)

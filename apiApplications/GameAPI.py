@@ -1,5 +1,7 @@
 import asyncio
 import json
+import os
+import sys
 from asyncio import sleep, create_task, CancelledError
 from datetime import datetime
 
@@ -8,8 +10,11 @@ import requests
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from models.Ping import Ping
-from service.GameService import GameService
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'service')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
+
+from Ping import Ping
+from GameService import GameService
 
 
 class GameAPI:
@@ -223,8 +228,7 @@ class GameAPI:
 
 
 if __name__ == "__main__":
-    host = "127.0.0.1"
-    port = 9094
-    api = GameAPI(host, port)
-    app = api.app
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", 9094))
+    app = GameAPI(host, port).app
     uvicorn.run(app, host=host, port=port)

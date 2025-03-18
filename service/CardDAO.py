@@ -1,11 +1,13 @@
 import os
 import random
 import sqlite3
+import sys
 from collections import defaultdict
-from itertools import permutations
 from typing import List
 
-from models.Card import Card
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'service')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
+from Card import Card
 
 
 class CardDAO:

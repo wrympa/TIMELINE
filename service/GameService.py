@@ -1,9 +1,13 @@
+import os
+import sys
 from copy import copy
 from typing import List, Any
 
-from models.Card import Card
-from models.GameState import GameState
-from service.CardDAO import CardDAO
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'models')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'service')))
+from Card import Card
+from GameState import GameState
+from CardDAO import CardDAO
 
 
 class GameService:
