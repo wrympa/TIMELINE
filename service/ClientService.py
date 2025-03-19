@@ -90,7 +90,9 @@ class ClientService:
         enqueue_data = {
             "UUID": self.currentGameUUID,
         }
-        result = requests.post(f"{self.queAddrs}/enqueue", json=enqueue_data).json()["message"]
+        result = requests.post(f"{self.queAddrs}/enqueue", json=enqueue_data).json()
+        print(result)
+        result = result["message"]
         if result == "ENQUEUED":
             await self.awaitQueueResponse()
         else:

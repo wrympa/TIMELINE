@@ -70,11 +70,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
 
     import subprocess
 
     subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)
     subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)
     subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)
-    # subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)
+    subprocess.run(["start", "cmd", "/k", "python .\service\ClientService.py"], shell=True)
