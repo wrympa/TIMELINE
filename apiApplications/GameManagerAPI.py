@@ -18,7 +18,7 @@ class GameManagerAPI:
         self.app = FastAPI()
         self.gameManagerService = GameManagerService()
         self.addressStruct = RegisterAddrRequest()
-        self.addressStruct.address = f"http://{host}:{port}"
+        self.addressStruct.address = f"https://timeline-production-a217.up.railway.app"
         self.register_routes()
 
     def register_routes(self):

@@ -24,7 +24,7 @@ class QueueAPI:
         self.app = FastAPI()
         self.queueService = QueueService()
         self.addressStruct = RegisterAddrRequest()
-        self.addressStruct.address = f"http://{host}:{port}"
+        self.addressStruct.address = f"https://timeline-production-2edd.up.railway.app"
         self.gameManagerAddr = ""
         self.register_routes()
 
