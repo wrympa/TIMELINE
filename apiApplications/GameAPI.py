@@ -39,6 +39,10 @@ class GameAPI:
         requests.post(f"{self.gameManagerAddrs}/addServer", json={"address": self.trueAddress})
         print("REGISTERED self as ", self.trueAddress)
 
+        @self.app.get("/")
+        async def root():
+            return {"message": "Server is running!"}
+
         @self.app.post("/resetServer")
         async def reset_server():
             print("Reset server called - cleaning up resources")
