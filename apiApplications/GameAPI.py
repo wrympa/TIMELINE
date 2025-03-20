@@ -165,13 +165,8 @@ class GameAPI:
     async def notify_game_manager(self):
         """Asynchronously notify the game manager that the game is finished."""
         try:
-            # Use httpx for async HTTP with timeout
             async with httpx.AsyncClient() as client:
-                await client.post(
-                    f"{self.gameManagerAddrs}/gameFinished",
-                    json={"address": self.trueAddress},
-                    timeout=5.0  # Add timeout to prevent hanging
-                )
+                requests.post(f"{self.gameManagerAddrs}/gameFinished", json={"address": self.trueAddress})
             print(f"Notified game manager that game at {self.trueAddress} is finished")
         except Exception as e:
             print(f"Failed to notify game manager of game end: {e}")
